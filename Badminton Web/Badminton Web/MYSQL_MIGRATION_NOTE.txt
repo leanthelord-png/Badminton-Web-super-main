@@ -1,0 +1,18 @@
+Đã chuyển các file cốt lõi sang MySQL:
+- config/database.php
+- admin_frontend/login.php
+- backend/prisma/schema.prisma
+- backend/src/controllers/backupController.js
+- setup_database.php
+- mysql_schema.sql
+- backend/.env.mysql.example
+
+Các bước tiếp theo:
+1. Tạo database MySQL: badminton_web
+2. Import mysql_schema.sql hoặc mở setup_database.php
+3. Cập nhật backend/.env thành DATABASE_URL="mysql://root:@localhost:3306/badminton_web"
+4. Chạy trong thư mục backend:
+   npm install
+   npm install mysql2
+   npx prisma generate
+   npx prisma db push

@@ -1,0 +1,134 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum booking_status {
+  pending
+  confirmed
+  cancelled
+  completed
+}
+
+enum user_role {
+  customer
+  staff
+  admin
+  owner
+}
+
+model users {
+  user_id           Int            @id @default(autoincrement())
+  username          String         @unique @db.VarChar(50)
+  password_hash     String         @db.VarChar(255)
+  full_name         String         @db.VarChar(100)
+  phone_number      String?        @unique @db.VarChar(20)
+  email             String?        @unique @db.VarChar(100)
+  role              user_role      @default(customer)
+  created_at        DateTime       @default(now())
+  user_balance      Decimal        @default(0.00) @db.Decimal(10, 2)
+  profile_image_url String?        @db.Text
+
+  bookings          bookings[]
+  owned_courts      courts[]
+}
+
+model courts {
+  court_id        Int             @id @default(autoincrement())
+  court_name      String          @db.VarChar(50)
+  court_type      String?         @db.VarChar(50)
+  price_per_hour  Decimal         @db.Decimal(10, 2)
+  is_active       Boolean         @default(true)
+  description     String?         @db.Text
+  image_url       String?         @db.Text
+  created_at      DateTime        @default(now())
+  facility_id     Int?
+  address         String?         @db.Text
+  opening_hours   Json?
+  phone_number    String?         @db.VarChar(20)
+  facilities      Json?
+  court_image     String?         @db.Text
+  owner_id        Int?
+
+  owner           users?          @relation(fields: [owner_id], references: [user_id], onDelete: SetNull)
+  bookings        bookings[]
+  court_pricing   court_pricing[]
+
+  @@index([owner_id], map: "idx_courts_owner")
+}
+
+model bookings {
+  booking_id   Int             @id @default(autoincrement())
+  user_id      Int
+  court_id     Int
+  start_time   DateTime
+  end_time     DateTime
+  total_price  Decimal         @db.Decimal(10, 2)
+  status       booking_status  @default(pending)
+  created_at   DateTime        @default(now())
+  time_slot_id Int?
+
+  users        users           @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  courts       courts          @relation(fields: [court_id], references: [court_id], onDelete: Restrict)
+  payments     payments[]
+
+  @@index([court_id, start_time], map: "idx_bookings_court_time")
+  @@index([user_id], map: "idx_bookings_user")
+}
+
+model payments {
+  payment_id            Int       @id @default(autoincrement())
+  booking_id            Int
+  amount_paid           Decimal   @db.Decimal(10, 2)
+  payment_date          DateTime  @default(now())
+  payment_method        String?   @db.VarChar(50)
+  transaction_reference String?   @db.VarChar(100)
+
+  bookings bookings @relation(fields: [booking_id], references: [booking_id], onDelete: Cascade)
+}
+
+model pricing_slots {
+  slot_id       Int             @id @default(autoincrement())
+  slot_name     String          @db.VarChar(50)
+  start_hour    Int
+  end_hour      Int
+  day_type      String          @db.VarChar(20)
+  multiplier    Decimal         @default(1.00) @db.Decimal(3, 2)
+  is_peak       Boolean         @default(false)
+  description   String?         @db.Text
+  is_active     Boolean         @default(true)
+
+  court_pricing court_pricing[]
+
+  @@unique([start_hour, end_hour, day_type])
+  @@map("pricing_slots")
+}
+
+model court_pricing {
+  id            Int            @id @default(autoincrement())
+  court_id      Int
+  slot_id       Int
+  custom_price  Decimal?       @db.Decimal(10, 2)
+  is_active     Boolean        @default(true)
+
+  courts        courts         @relation(fields: [court_id], references: [court_id], onDelete: Cascade)
+  pricing_slots pricing_slots  @relation(fields: [slot_id], references: [slot_id], onDelete: Cascade)
+
+  @@unique([court_id, slot_id])
+  @@map("court_pricing")
+}
+
+model chat_logs {
+  id         Int      @id @default(autoincrement())
+  user_id    Int?
+  message    String?  @db.Text
+  intent     String?  @db.VarChar(50)
+  response   String?  @db.Text
+  created_at DateTime @default(now()) @db.Timestamp(6)
+  
+  users users @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "chat_logs_user_id_fkey")
+}
